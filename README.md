@@ -3,6 +3,8 @@
 
 This is a Docker container for [Nginx Proxy Manager](https://nginxproxymanager.jc21.com).
 
+This is a fork from https://github.com/jlesage/docker-nginx-proxy-manager with a few changes so that Nginx runs on port 80 / 443
+
 ---
 
 [![Nginx Proxy Manager logo](https://images.weserv.nl/?url=raw.githubusercontent.com/jlesage/docker-templates/master/jlesage/images/nginx-proxy-manager-icon.png&w=200)](https://nginxproxymanager.jc21.com)[![Nginx Proxy Manager](https://dummyimage.com/400x110/ffffff/575757&text=Nginx+Proxy+Manager)](https://nginxproxymanager.jc21.com)
