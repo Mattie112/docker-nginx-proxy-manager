@@ -5,21 +5,50 @@
 #
 
 # Pull base image.
-FROM jlesage/baseimage:alpine-3.9-v2.4.3
+FROM jlesage/baseimage:alpine-3.12-v2.4.4
 
 # Docker image version is provided via build arg.
 ARG DOCKER_IMAGE_VERSION=unknown
 
 # Define software versions.
 ARG OPENRESTY_VERSION=1.17.8.1
-ARG NGINX_PROXY_MANAGER_VERSION=2.3.1
+ARG NGINX_PROXY_MANAGER_VERSION=2.7.2
+ARG WATCH_VERSION=0.3.1
 
 # Define software download URLs.
 ARG OPENRESTY_URL=https://openresty.org/download/openresty-${OPENRESTY_VERSION}.tar.gz
 ARG NGINX_PROXY_MANAGER_URL=https://github.com/jc21/nginx-proxy-manager/archive/v${NGINX_PROXY_MANAGER_VERSION}.tar.gz
+ARG WATCH_URL=https://github.com/tj/watch/archive/${WATCH_VERSION}.tar.gz
 
 # Define working directory.
 WORKDIR /tmp
+
+# Build and install the watch binary.
+RUN \
+    add-pkg --virtual build-dependencies \
+        build-base \
+        curl \
+        && \
+    # Set same default compilation flags as abuild.
+    export CFLAGS="-Os -fomit-frame-pointer" && \
+    export CXXFLAGS="$CFLAGS" && \
+    export CPPFLAGS="$CFLAGS" && \
+    export LDFLAGS="-Wl,--as-needed" && \
+    # Download.
+    echo "Downloading watch..." && \
+    mkdir watch && \
+    curl -# -L ${WATCH_URL} | tar xz --strip 1 -C watch && \
+    # Compile.
+    echo "Compiling watch..." && \
+    cd watch && \
+    make && \
+    # Install.
+    echo "Installing watch..." && \
+    make install && \
+    strip /usr/local/bin/watch && \
+    # Cleanup.
+    del-pkg build-dependencies && \
+    rm -rf /tmp/* /tmp/.[!.]*
 
 # Build and install OpenResty (nginx).
 RUN \
@@ -31,7 +60,13 @@ RUN \
         pcre-dev \
         openssl-dev \
         zlib-dev \
+        geoip-dev \
         && \
+    # Set same default compilation flags as abuild.
+    export CFLAGS="-Os -fomit-frame-pointer" && \
+    export CXXFLAGS="$CFLAGS" && \
+    export CPPFLAGS="$CFLAGS" && \
+    export LDFLAGS="-Wl,--as-needed" && \
     # Download.
     echo "Downloading OpenResty..." && \
     mkdir openresty && \
@@ -39,51 +74,56 @@ RUN \
     # Compile.
     echo "Compiling OpenResty..." && \
     cd openresty && \
-    # Disable SSE4.2 since this is not supported by all CPUs...
+    # Disable SSE4.2 since this is not supported by all CPUs...  Without this,
+    # Nginx fails to start with the 'Illegal instruction' error on CPU not
+    # supporting SSE4.2.
+    # https://github.com/openresty/openresty/issues/267
     sed-patch 's|#ifndef __SSE4_2__|#if 1|' configure && \
     ./configure -j$(nproc) \
-	--prefix=/var/lib/nginx \
-	--sbin-path=/usr/sbin/nginx \
-	--modules-path=/usr/lib/nginx/modules \
-	--conf-path=/etc/nginx/nginx.conf \
-	--pid-path=/var/run/nginx/nginx.pid \
-	--lock-path=/var/run/nginx/nginx.lock \
-	--error-log-path=/config/log/nginx/error.log \
-	--http-log-path=/config/log/nginx/access.log \
-	\
-	--http-client-body-temp-path=/var/tmp/nginx/client_body \
-	--http-proxy-temp-path=/var/tmp/nginx/proxy \
-	--http-fastcgi-temp-path=/var/tmp/nginx/fastcgi \
-	--http-uwsgi-temp-path=/var/tmp/nginx/uwsgi \
-	--http-scgi-temp-path=/var/tmp/nginx/scgi \
-	--with-perl_modules_path=/usr/lib/perl5/vendor_perl \
-	\
-	--user=nginx \
-	--group=nginx \
-	--with-threads \
-	--with-file-aio \
-	\
-	--with-http_ssl_module \
-	--with-http_v2_module \
-	--with-http_realip_module \
-	--with-http_addition_module \
-	--with-http_sub_module \
-	--with-http_dav_module \
-	--with-http_flv_module \
-	--with-http_mp4_module \
-	--with-http_gunzip_module \
-	--with-http_gzip_static_module \
-	--with-http_auth_request_module \
-	--with-http_random_index_module \
-	--with-http_secure_link_module \
-	--with-http_degradation_module \
-	--with-http_slice_module \
-	--with-http_stub_status_module \
-	--with-stream \
-	--with-stream_ssl_module \
-	--with-stream_realip_module \
-	--with-stream_ssl_preread_module \
-	--with-pcre-jit \
+        --prefix=/var/lib/nginx \
+        --sbin-path=/usr/sbin/nginx \
+        --modules-path=/usr/lib/nginx/modules \
+        --conf-path=/etc/nginx/nginx.conf \
+        --pid-path=/var/run/nginx/nginx.pid \
+        --lock-path=/var/run/nginx/nginx.lock \
+        --error-log-path=/config/log/error.log \
+        --http-log-path=/config/log/access.log \
+        \
+        --http-client-body-temp-path=/var/tmp/nginx/client_body \
+        --http-proxy-temp-path=/var/tmp/nginx/proxy \
+        --http-fastcgi-temp-path=/var/tmp/nginx/fastcgi \
+        --http-uwsgi-temp-path=/var/tmp/nginx/uwsgi \
+        --http-scgi-temp-path=/var/tmp/nginx/scgi \
+        --with-perl_modules_path=/usr/lib/perl5/vendor_perl \
+        \
+        --user=nginx \
+        --group=nginx \
+        --with-threads \
+        --with-file-aio \
+        \
+        --with-http_ssl_module \
+        --with-http_v2_module \
+        --with-http_realip_module \
+        --with-http_addition_module \
+        --with-http_sub_module \
+        --with-http_dav_module \
+        --with-http_flv_module \
+        --with-http_mp4_module \
+        --with-http_gunzip_module \
+        --with-http_gzip_static_module \
+        --with-http_auth_request_module \
+        --with-http_random_index_module \
+        --with-http_secure_link_module \
+        --with-http_degradation_module \
+        --with-http_slice_module \
+        --with-http_stub_status_module \
+        --with-http_geoip_module \
+        --with-stream \
+        --with-stream_ssl_module \
+        --with-stream_realip_module \
+        --with-stream_ssl_preread_module \
+        --with-stream_geoip_module \
+        --with-pcre-jit \
         && \
     make -j$(nproc) && \
     # Install.
@@ -95,6 +135,7 @@ RUN \
     # Cleanup.
     del-pkg build-dependencies && \
     rm -r \
+        /etc/nginx/*.default \
         /var/lib/nginx/bin/opm \
         /var/lib/nginx/bin/nginx-xml2pod \
         /var/lib/nginx/bin/restydoc-index \
@@ -114,22 +155,20 @@ RUN \
 RUN \
     add-pkg \
         nodejs \
-        mariadb \
-        mariadb-client \
-        mariadb-server-utils \
+        py3-pip \
+        sqlite \
         certbot \
         openssl \
         apache2-utils \
         logrotate \
+        # For /opt/nginx-proxy-manager/bin/handle-ipv6-setting
+        bash \
+        # For openresty
+        pcre \
+        geoip \
         && \
     # Adjust the logrotate config file.
-    sed-patch 's|^/var/log/messages|#/var/log/messages|' /etc/logrotate.conf && \
-    # Clean some uneeded stuff from mariadb.
-    rm -r \
-        /var/lib/mysql \
-        && \
-    # Make sure mariadb listen on port 3306
-    sed-patch 's/^skip-networking/#skip-networking/' /etc/my.cnf.d/mariadb-server.cnf
+    sed-patch 's|^/var/log/messages|#/var/log/messages|' /etc/logrotate.conf
 
 # Install Nginx Proxy Manager.
 RUN \
@@ -140,7 +179,7 @@ RUN \
         patch \
         yarn \
         git \
-        python \
+        python3 \
         npm \
         bash \
         && \
@@ -179,6 +218,9 @@ RUN \
     mkdir -p /opt && \
     cp -r /app/backend /opt/nginx-proxy-manager && \
     cp -r /app/frontend/dist /opt/nginx-proxy-manager/frontend && \
+    cp -r /app/global /opt/nginx-proxy-manager && \
+    mkdir /opt/nginx-proxy-manager/bin && \
+    cp -r nginx-proxy-manager/docker/rootfs/bin/handle-ipv6-setting /opt/nginx-proxy-manager/bin/ && \
     cp -r nginx-proxy-manager/docker/rootfs/etc/nginx /etc/ && \
     cp -r nginx-proxy-manager/docker/rootfs/var/www /var/ && \
     cp -r nginx-proxy-manager/docker/rootfs/etc/letsencrypt.ini /etc/ && \
@@ -224,8 +266,14 @@ RUN \
     sed-patch 's|/data/logs/|/config/log/|' /opt/nginx-proxy-manager/templates/proxy_host.conf && \
     sed-patch 's|/data/logs/|/config/log/|' /opt/nginx-proxy-manager/templates/redirection_host.conf && \
 
+    # Adjust certbot config.
+    sed-patch 's|/data/|/config/|g' /etc/letsencrypt.ini && \
+
     # Change client_body_temp_path.
     sed-patch 's|/tmp/nginx/body|/var/tmp/nginx/body|' /etc/nginx/nginx.conf && \
+
+    # Fix the pip install command.
+    sed-patch 's|pip3 install |pip3 install --user |' /opt/nginx-proxy-manager/internal/certificate.js && \
 
     # Redirect `/data' to '/config'.
     ln -s /config /data && \
@@ -245,8 +293,12 @@ RUN \
     mkdir /opt/nginx-proxy-manager/config && \
     ln -s /config/production.json /opt/nginx-proxy-manager/config/production.json && \
 
-    # Make sure letencrypt certificates are stored in persistent volume.
+    # Make sure letsencrypt certificates are stored in persistent volume.
     ln -s /config/letsencrypt /etc/letsencrypt && \
+
+    # Make sure some default certbot directories are stored in persistent volume.
+    ln -s /config/letsencrypt-workdir /var/lib/letsencrypt && \
+    ln -s /config/log/letsencrypt /var/log/letsencrypt && \
 
     # Cleanup.
     del-pkg build-dependencies && \
@@ -283,7 +335,8 @@ COPY rootfs/ /
 
 # Set environment variables.
 ENV APP_NAME="Nginx Proxy Manager" \
-    KEEP_APP_RUNNING=1
+    KEEP_APP_RUNNING=1 \
+    DISABLE_IPV6=0
 
 # Define mountable directories.
 VOLUME ["/config"]

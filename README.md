@@ -90,6 +90,7 @@ of this parameter has the format `<VARIABLE_NAME>=<VALUE>`.
 |`KEEP_APP_RUNNING`| When set to `1`, the application will be automatically restarted if it crashes or if a user quits it. | `0` |
 |`APP_NICENESS`| Priority at which the application should run.  A niceness value of -20 is the highest priority and 19 is the lowest priority.  By default, niceness is not set, meaning that the default niceness of 0 is used.  **NOTE**: A negative niceness (priority increase) requires additional permissions.  In this case, the container should be run with the docker option `--cap-add=SYS_NICE`. | (unset) |
 |`CLEAN_TMP_DIR`| When set to `1`, all files in the `/tmp` directory are deleted during the container startup. | `1` |
+|`DISABLE_IPV6`| When set to `1`, IPv6 support is disabled.  This is needed when IPv6 is not enabled/supported on the host. | `0` |
 
 ### Data Volumes
 
@@ -116,11 +117,11 @@ container cannot be changed, but you are free to use any port on the host side.
 
 ### Changing Parameters of a Running Container
 
-As seen, environment variables, volume mappings and port mappings are specified
+As can be seen, environment variables, volume and port mappings are all specified
 while creating the container.
 
 The following steps describe the method used to add, remove or update
-parameter(s) of an existing container.  The generic idea is to destroy and
+parameter(s) of an existing container.  The general idea is to destroy and
 re-create the container:
 
   1. Stop the container (if it is running):
@@ -163,8 +164,19 @@ services:
 
 ## Docker Image Update
 
-If the system on which the container runs doesn't provide a way to easily update
-the Docker image, the following steps can be followed:
+Because features are added, issues are fixed, or simply because a new version
+of the containerized application is integrated, the Docker image is regularly
+updated.  Different methods can be used to update the Docker image.
+
+The system used to run the container may have a built-in way to update
+containers.  If so, this could be your primary way to update Docker images.
+
+An other way is to have the image be automatically updated with [Watchtower].
+Whatchtower is a container-based solution for automating Docker image updates.
+This is a "set and forget" type of solution: once a new image is available,
+Watchtower will seamlessly perform the necessary steps to update the container.
+
+Finally, the Docker image can be manually updated with these steps:
 
   1. Fetch the latest image:
 ```
@@ -178,7 +190,10 @@ docker stop nginx-proxy-manager
 ```
 docker rm nginx-proxy-manager
 ```
-  4. Start the container using the `docker run` command.
+  4. Create and start the container using the `docker run` command, with the
+the same parameters that were used when it was deployed initially.
+
+[Watchtower]: https://github.com/containrrr/watchtower
 
 ### Synology
 
@@ -242,7 +257,7 @@ http://<HOST IP ADDR>:8181
 
 ## Shell Access
 
-To get shell access to a the running container, execute the following command:
+To get shell access to the running container, execute the following command:
 
 ```
 docker exec -ti CONTAINER sh
@@ -307,7 +322,7 @@ For more details about port forwarding, see the following links:
 The password of a user can be reset to `changeme` with the following command:
 
 ```
-docker exec CONTAINER_NAME /opt/nginx-proxy-manager/reset-password.sh USER_EMAIL
+docker exec CONTAINER_NAME /opt/nginx-proxy-manager/bin/reset-password USER_EMAIL
 ```
 
 Where:
