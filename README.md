@@ -1,5 +1,5 @@
 # Docker container for Nginx Proxy Manager
-[![Docker Image Size](https://img.shields.io/microbadger/image-size/jlesage/nginx-proxy-manager)](http://microbadger.com/#/images/jlesage/nginx-proxy-manager) [![Build Status](https://drone.le-sage.com/api/badges/jlesage/docker-nginx-proxy-manager/status.svg)](https://drone.le-sage.com/jlesage/docker-nginx-proxy-manager) [![GitHub Release](https://img.shields.io/github/release/jlesage/docker-nginx-proxy-manager.svg)](https://github.com/jlesage/docker-nginx-proxy-manager/releases/latest) [![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://paypal.me/JocelynLeSage/0usd)
+[![Docker Image Size](https://img.shields.io/docker/image-size/jlesage/nginx-proxy-manager/latest)](https://hub.docker.com/r/jlesage/nginx-proxy-manager/tags) [![Build Status](https://drone.le-sage.com/api/badges/jlesage/docker-nginx-proxy-manager/status.svg)](https://drone.le-sage.com/jlesage/docker-nginx-proxy-manager) [![GitHub Release](https://img.shields.io/github/release/jlesage/docker-nginx-proxy-manager.svg)](https://github.com/jlesage/docker-nginx-proxy-manager/releases/latest) [![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://paypal.me/JocelynLeSage/0usd)
 
 This is a Docker container for [Nginx Proxy Manager](https://nginxproxymanager.jc21.com).
 
@@ -225,7 +225,7 @@ For unRAID, a container image can be updated by following these steps:
 
 When using data volumes (`-v` flags), permissions issues can occur between the
 host and the container.  For example, the user within the container may not
-exists on the host.  This could prevent the host from properly accessing files
+exist on the host.  This could prevent the host from properly accessing files
 and folders on the shared volume.
 
 To avoid any problem, you can specify the user the application should run as.
