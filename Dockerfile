@@ -5,14 +5,14 @@
 #
 
 # Pull base image.
-FROM jlesage/baseimage:alpine-3.12-v2.4.4
+FROM jlesage/baseimage:alpine-3.12-v2.4.5
 
 # Docker image version is provided via build arg.
 ARG DOCKER_IMAGE_VERSION=unknown
 
 # Define software versions.
 ARG OPENRESTY_VERSION=1.19.3.1
-ARG NGINX_PROXY_MANAGER_VERSION=2.8.1
+ARG NGINX_PROXY_MANAGER_VERSION=2.9.3
 ARG NGINX_HTTP_GEOIP2_MODULE_VERSION=3.3
 ARG LIBMAXMINDDB_VERSION=1.5.0
 ARG WATCH_VERSION=0.3.1
@@ -176,20 +176,48 @@ RUN \
 # Install dependencies.
 RUN \
     add-pkg \
+        curl \
         nodejs \
-        py3-pip \
+        python3 \
         sqlite \
-        certbot \
         openssl \
         apache2-utils \
         logrotate \
-        # For /opt/nginx-proxy-manager/bin/handle-ipv6-setting
+        # For /opt/nginx-proxy-manager/bin/handle-ipv6-setting.
         bash \
-        # For openresty
+        # For openresty.
         pcre \
         && \
     # Adjust the logrotate config file.
     sed-patch 's|^/var/log/messages|#/var/log/messages|' /etc/logrotate.conf
+
+# Build and install certbot.
+RUN \
+    add-pkg --virtual build-dependencies \
+        build-base \
+        python3-dev \
+        libffi-dev \
+        openssl-dev \
+        cargo \
+        && \
+    # Install pip first.
+    # NOTE: pip from the Alpine package repository is debundled, meaning that
+    #       its dependencies are part of the system-wide ones.  This save a lot
+    #       of space, but these dependencies conflict with the ones required by
+    #       Certbot plugins. Thus, we need to manually install pip (with its
+    #       built-in dependencies).  See:
+    #       https://pip.pypa.io/en/stable/development/vendoring-policy/
+    curl -# -L "https://bootstrap.pypa.io/get-pip.py" | python3 && \
+    # Then install certbot.
+    CARGO_HOME=/tmp/.cargo pip install --no-cache-dir --prefix=/usr certbot && \
+    find /usr/lib/python3.8/site-packages -type f -name "*.so" -exec strip {} ';' && \
+    find /usr/lib/python3.8/site-packages -type f -name "*.h" -delete && \
+    find /usr/lib/python3.8/site-packages -type f -name "*.c" -delete && \
+    find /usr/lib/python3.8/site-packages -type f -name "*.exe" -delete && \
+    find /usr/lib/python3.8/site-packages -type d -name tests -print0 | xargs -0 rm -r && \
+    # Cleanup.
+    del-pkg build-dependencies && \
+    rm -rf /tmp/* /tmp/.[!.]*
 
 # Install Nginx Proxy Manager.
 RUN \
@@ -279,23 +307,8 @@ RUN \
     chown root /usr/sbin/nginx && \
     chmod u+s /usr/sbin/nginx && \
 
-    # Change log paths.
-    sed-patch 's|/data/logs/|/config/log/|' /etc/nginx/nginx.conf && \
-    sed-patch 's|/data/logs/|/config/log/|' /etc/nginx/conf.d/default.conf && \
-    sed-patch 's|/data/logs/|/config/log/|' /opt/nginx-proxy-manager/templates/dead_host.conf && \
-    sed-patch 's|/data/logs/|/config/log/|' /opt/nginx-proxy-manager/templates/default.conf && \
-    sed-patch 's|/data/logs/|/config/log/|' /opt/nginx-proxy-manager/templates/letsencrypt-request.conf && \
-    sed-patch 's|/data/logs/|/config/log/|' /opt/nginx-proxy-manager/templates/proxy_host.conf && \
-    sed-patch 's|/data/logs/|/config/log/|' /opt/nginx-proxy-manager/templates/redirection_host.conf && \
-
-    # Adjust certbot config.
-    sed-patch 's|/data/|/config/|g' /etc/letsencrypt.ini && \
-
     # Change client_body_temp_path.
     sed-patch 's|/tmp/nginx/body|/var/tmp/nginx/body|' /etc/nginx/nginx.conf && \
-
-    # Fix the pip install command.
-    sed-patch 's|pip3 install |pip3 install --user |' /opt/nginx-proxy-manager/internal/certificate.js && \
 
     # Redirect `/data' to '/config'.
     ln -s /config /data && \
