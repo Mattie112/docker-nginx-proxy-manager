@@ -11,6 +11,7 @@ This project implements a Docker container for [Nginx Proxy Manager](https://ngi
 
 
 This is a fork from https://github.com/jlesage/docker-nginx-proxy-manager with a few changes so that Nginx runs on port 80 / 443
+Dockerhub for this fork: https://hub.docker.com/repository/docker/mattie112/docker-nginx-proxy-manager
 
 ---
 
