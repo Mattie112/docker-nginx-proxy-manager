@@ -144,26 +144,29 @@ sed -i 's|81 default|8181 default|' $ROOTFS/etc/nginx/conf.d/production.conf
 sed -i 's|/app/frontend;|/opt/nginx-proxy-manager/frontend;|' $ROOTFS/etc/nginx/conf.d/production.conf
 
 # Change the HTTP port 80 to the unprivileged port 8080.
-sed -i 's|80;|8080;|' $ROOTFS/etc/nginx/conf.d/default.conf
-sed -i 's|"80";|"8080";|' $ROOTFS/etc/nginx/conf.d/default.conf
-sed -i 's|listen 80;|listen 8080;|' $ROOTFS/opt/nginx-proxy-manager/templates/letsencrypt-request.conf
-sed -i 's|:80;|:8080;|' $ROOTFS/opt/nginx-proxy-manager/templates/letsencrypt-request.conf
-sed -i 's|listen 80;|listen 8080;|' $ROOTFS/opt/nginx-proxy-manager/templates/_listen.conf
-sed -i 's|:80;|:8080;|' $ROOTFS/opt/nginx-proxy-manager/templates/_listen.conf
-sed -i 's|80 default;|8080 default;|' $ROOTFS/opt/nginx-proxy-manager/templates/default.conf
+#sed -i 's|80;|8080;|' $ROOTFS/etc/nginx/conf.d/default.conf
+#sed -i 's|"80";|"8080";|' $ROOTFS/etc/nginx/conf.d/default.conf
+#sed -i 's|listen 80;|listen 8080;|' $ROOTFS/opt/nginx-proxy-manager/templates/letsencrypt-request.conf
+#sed -i 's|:80;|:8080;|' $ROOTFS/opt/nginx-proxy-manager/templates/letsencrypt-request.conf
+#sed -i 's|listen 80;|listen 8080;|' $ROOTFS/opt/nginx-proxy-manager/templates/_listen.conf
+#sed -i 's|:80;|:8080;|' $ROOTFS/opt/nginx-proxy-manager/templates/_listen.conf
+#sed -i 's|80 default;|8080 default;|' $ROOTFS/opt/nginx-proxy-manager/templates/default.conf
 
 # Change the HTTPs port 443 to the unprivileged port 4443.
-sed -i 's|443 |4443 |' $ROOTFS/etc/nginx/conf.d/default.conf
-sed -i 's|"443";|"4443";|' $ROOTFS/etc/nginx/conf.d/default.conf
-sed -i 's|listen 443 |listen 4443 |' $ROOTFS/opt/nginx-proxy-manager/templates/_listen.conf
-sed -i 's|:443 |:4443 |' $ROOTFS/opt/nginx-proxy-manager/templates/_listen.conf
-sed -i 's|:443;|:4443;|' $ROOTFS/opt/nginx-proxy-manager/templates/_listen.conf
+#sed -i 's|443 |4443 |' $ROOTFS/etc/nginx/conf.d/default.conf
+#sed -i 's|"443";|"4443";|' $ROOTFS/etc/nginx/conf.d/default.conf
+#sed -i 's|listen 443 |listen 4443 |' $ROOTFS/opt/nginx-proxy-manager/templates/_listen.conf
+#sed -i 's|:443 |:4443 |' $ROOTFS/opt/nginx-proxy-manager/templates/_listen.conf
+#sed -i 's|:443;|:4443;|' $ROOTFS/opt/nginx-proxy-manager/templates/_listen.conf
 
 # Fix nginx test command line.
 sed -i 's|-g "error_log off;"||' $ROOTFS/opt/nginx-proxy-manager/internal/nginx.js
 
 # Remove the `user` directive, since we want nginx to run as non-root.
-sed -i 's|user npm;|#user npm;|' $ROOTFS/etc/nginx/nginx.conf
+#sed -i 's|user npm;|#user npm;|' $ROOTFS/etc/nginx/nginx.conf
+# We must run as root due to the low port number
+chown root /usr/sbin/nginx
+chmod u+s /usr/sbin/nginx
 
 # Change client_body_temp_path.
 sed -i 's|/tmp/nginx/body|/var/tmp/nginx/body|' $ROOTFS/etc/nginx/nginx.conf
