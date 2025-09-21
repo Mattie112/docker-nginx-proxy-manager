@@ -166,8 +166,8 @@ sed -i 's|-g "error_log off;"||' $ROOTFS/opt/nginx-proxy-manager/internal/nginx.
 # Remove the `user` directive, since we want nginx to run as non-root.
 #sed -i 's|user npm;|#user npm;|' $ROOTFS/etc/nginx/nginx.conf
 # We must run as root due to the low port number
-chown root /usr/sbin/nginx
-chmod u+s /usr/sbin/nginx
+#chown root /usr/sbin/nginx
+#chmod u+s /usr/sbin/nginx
 
 # Change client_body_temp_path.
 sed -i 's|/tmp/nginx/body|/var/tmp/nginx/body|' $ROOTFS/etc/nginx/nginx.conf
