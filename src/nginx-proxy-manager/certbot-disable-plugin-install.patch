@@ -1,0 +1,15 @@
+#
+# Disable dynamic installation of certbot plugins, since they are all
+# pre-installed.
+#
+--- a/backend/lib/certbot.js
++++ b/backend/lib/certbot.js
+@@ -38,7 +38,7 @@
+ 				.join(" ")
+ 		: "";
+ 
+-	const cmd = `. /opt/certbot/bin/activate && pip install --no-cache-dir ${quotedDeps} '${plugin.package_name}${plugin.version}' && deactivate`;
++	const cmd = `/bin/true`;
+ 	return utils
+ 		.exec(cmd, { env })
+ 		.then((result) => {

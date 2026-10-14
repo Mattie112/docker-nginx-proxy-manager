@@ -26,41 +26,29 @@ app:
     extra_description: >-
       **NOTE**: For this container to be accessible from the internet, make sure ports
       **80** and **443** on the internet side of your router are properly forwarded to
-      this container.  See the documentation for more details.
-
-      **NOTE**: After a fresh install, the default username/password to connect to the
-      management interface are:
-      > admin@example.com/changeme.
+      this container. See the documentation for more details.
   documentation:
     sections:
-      - title: Default Administrator Account
-        level: 2
-        content: |-
-          After a fresh install, use the following credentials to login:
-            - Email address: `admin@example.com`
-            - Password: `changeme`
-
-          After you login with this default user, you will be asked to modify your details
-          and change your password.
       - title: Accessibility From The Internet
         level: 2
         content: |-
-          **NOTE:** This section assumes that the container is using the default `bridge`
-          network type.
+          > [!NOTE]
+          > This section assumes that the container is using the default `bridge` network
+          > type.
 
           For this container to be accessible from the Internet, port forwarding must be
-          configured on your router.  This allows HTTP (port 80) and HTTPs (port 443)
+          configured on your router. This allows HTTP (port 80) and HTTPs (port 443)
           traffic from the Internet to reach this container on your private network.
 
           Configuration of port forwarding differs from one router to another, but in
           general the same information must be configured:
             - **External port**: The Internet-side port to be forwarded.
-            - **Internal port**: The port to forward to.  Also called private port.
+            - **Internal port**: The port to forward to. Also called private port.
             - **Destination IP address**: The IP address of the device on the local
-              network to forward to.  Also called private IP address.
+              network to forward to. Also called private IP address.
 
           The IP address to forward to should be the IP address of the host running the
-          container.  The port to forward to should be the port mapped to the container
+          container. The port to forward to should be the port mapped to the container
           during its creation (via the `-p` parameter of the `docker run` command).
 
           Since the container needs to handle both HTTP and HTTPs traffic, two ports need
@@ -71,13 +59,14 @@ app:
           | HTTP         | 8080           | XXXX                          | 80            | XXXX          | IP address of the host running the container. |
           | HTTPs        | 4443           | YYYY                          | 443           | YYYY          | IP address of the host running the container. |
 
-          `XXXX` and `YYYY` are configurable port values.  Unless they conflict with other
+          `XXXX` and `YYYY` are configurable port values. Unless they conflict with other
           used ports on the host, they can simply be set to the same value as the
           container port.
 
-          **NOTE**: Some routers don't offer the ability to configure the internal port
-          to forward to.  This means that internal port is the same as the external one.
-          In a such scenario, `XXXX` must be set to `80` and `YYYY` to `443`.
+          > [!NOTE]
+          > Some routers don't offer the ability to configure the internal port to forward
+          > to. This means that internal port is the same as the external one. In a such
+          > scenario, `XXXX` must be set to `80` and `YYYY` to `443`.
 
           For more details about port forwarding, see the following links:
             - [How to Port Forward - General Guide to Multiple Router Brands](https://www.noip.com/support/knowledgebase/general-port-forwarding-guide/)
@@ -98,6 +87,48 @@ app:
             - `CONTAINER_NAME` is the name of the running container.
             - `USER_EMAIL` is the email of the address to reset the password.
   changelog:
+    - version: 26.10.1
+      date: 2026-10-05
+      changes:
+        - 'Updated Nginx Proxy Manager to version 2.16.0.'
+    - version: 26.09.1
+      date: 2026-09-22
+      changes:
+        - 'Updated baseimage to version 3.11.12.'
+    - version: 26.08.2
+      date: 2026-08-17
+      changes:
+        - 'Updated baseimage to version 3.11.11.'
+    - version: 26.08.1
+      date: 2026-08-11
+      changes:
+        - 'Updated baseimage to version 3.11.10.'
+    - version: 26.07.2
+      date: 2026-07-27
+      changes:
+        - 'Fixed an issue that prevented the Route 53 DNS plugin from functioning properly.'
+    - version: 26.07.1
+      date: 2026-07-22
+      changes:
+        - 'Updated Nginx Proxy Manager to version 2.15.1.'
+        - 'Updated OpenResty to version 1.29.2.5.'
+        - 'Updated baseimage to version 3.11.8.'
+    - version: 26.05.1
+      date: 2026-05-23
+      changes:
+        - 'Fixed an issue causing some plugins to fail to run.'
+    - version: 26.03.2
+      date: 2026-03-18
+      changes:
+        - 'Fixed an issue where connection from Cloudflare would fail during the SSL handshake.'
+        - 'Perform a backup of the database when upgrading to a new version of Nginx Proxy Manager.'
+    - version: 26.03.1
+      date: 2026-03-15
+      changes:
+        - 'Updated Nginx Proxy Manager to version 2.14.0.'
+        - 'Certbot plugins are now pre-installed with their own virtual environment.'
+        - 'Updated OpenResty to version 1.27.1.2.'
+        - 'Updated baseimage to version 3.10.5, now based on Alpine Linux 3.23.'
     - version: 25.09.1
       date: 2025-09-13
       changes:
@@ -423,14 +454,56 @@ container:
   environment_variables:
     - name: DISABLE_IPV6
       description: >-
-        When set to `1`, IPv6 support is disabled.  This is needed when IPv6 is
+        When set to `1`, IPv6 support is disabled. This is needed when IPv6 is
         not enabled/supported on the host.
       type: public
       default: 0
       unraid_template:
         title: Disable IPv6
+        display: advanced
+        required: false
+        mask: false
+    - name: DISABLE_RESOLVER
+      description: >-
+        When set to `1`, usage of NGINX resolver is disabled.
+      type: public
+      default: 0
+      unraid_template:
+        title: Disable NGINX Resolver
+        display: advanced
+        required: false
+        mask: false
+    - name: IP_RANGES_FETCH_ENABLED
+      description: >-
+        When set to `1`, official Cloudflare and CloudFront IP ranges are
+        periodically fetched to define a trusted list. This ensures the system
+        recognizes these providers as legitimate intermediaries, allowing it use
+        the original client IP from request headers instead of the provider's
+        IP.
+      type: public
+      default: 1
+      unraid_template:
+        title: Fetch IP Ranges
+        display: advanced
+        required: false
+        mask: false
+    - name: NPM_ADMIN_PORT
+      description: >-
+        Port used by the administration web interface. This port is internal to
+        the container and typically does not need to be changed. By default, a
+        container uses the default bridge network, requiring each internal port
+        to be mapped to an external port (using the `-p` or `--publish`
+        argument). If another network type is used, changing this port may
+        prevent conflicts with other services/containers.
+      type: public
+      default: 8181
+      unraid_template:
+        title: Admin Listening Port (Non-Bridge Network Type)
         description: >-
-          When set to '1', IPv6 support is disabled.
+          Port used by the administration web interface. This port is internal
+          to the container and typically does not need to be changed. NOTE:
+          This setting is relevant only when the Network Type is set to
+          something else than Bridge.
         display: advanced
         required: false
         mask: false
@@ -443,13 +516,13 @@ container:
     - number: 8181
       protocol: tcp
       description: >-
-        Port used to access the web interface of the application.
+        Port used to access the administration web interface. For non-default
+        bridge networks, the port can be changed with the `NPM_ADMIN_PORT`
+        environment variable.
       mandatory: true
       include_in_quick_start: true
       unraid_template:
         title: Web UI Port
-        description: >-
-          Port used to access the web interface of the application.
         default: "{{ 7800 + app.id|int }}"
         display: always
         required: true
@@ -463,8 +536,8 @@ container:
       unraid_template:
         title: HTTP Port
         description: >-
-          Port used to serve HTTP requests.  NOTE: Your router should be
-          configured to forward port 80 to this port.  If your router doesn't
+          Port used to serve HTTP requests. NOTE: Your router should be
+          configured to forward port 80 to this port. If your router doesn't
           allow setting the destination/internal IP address, this *must* be set
           to 80.
         default: "{{ app.id|int }}80"
@@ -480,8 +553,8 @@ container:
       unraid_template:
         title: HTTPs Port
         description: >-
-          Port used to serve HTTPs requests.  NOTE: Your router should be
-          configured to forward port 443 to this port.  If your router doesn't
+          Port used to serve HTTPs requests. NOTE: Your router should be
+          configured to forward port 443 to this port. If your router doesn't
           allow setting the destination/internal IP address, this *must* be set
           to 443.
         default: "{{ app.id|int }}443"

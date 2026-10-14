@@ -6,9 +6,12 @@
 [![Build Status](https://img.shields.io/github/actions/workflow/status/jlesage/docker-nginx-proxy-manager/build-image.yml?logo=github&branch=master&style=for-the-badge)](https://github.com/jlesage/docker-nginx-proxy-manager/actions/workflows/build-image.yml)
 [![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg?style=for-the-badge)](https://paypal.me/JocelynLeSage)
 
-This project provides a Docker container for [Nginx Proxy Manager](https://nginxproxymanager.com).
+This project provides a lightweight and secure Docker container for
+[Nginx Proxy Manager](https://nginxproxymanager.com).
 
-
+> [!NOTE]
+> This Docker container is entirely unofficial and not made by the creators of
+> Nginx Proxy Manager.
 
 This is a fork from https://github.com/jlesage/docker-nginx-proxy-manager with a few changes so that Nginx runs on port 80 / 443
 
@@ -39,9 +42,8 @@ Nginx or Letsencrypt.
       * [Synology](#synology)
       * [unRAID](#unraid)
    * [User/Group IDs](#usergroup-ids)
-   * [Accessing the GUI](#accessing-the-gui)
    * [Shell Access](#shell-access)
-   * [Default Administrator Account](#default-administrator-account)
+   * [Accessing the GUI](#accessing-the-gui)
    * [Accessibility From The Internet](#accessibility-from-the-internet)
    * [Troubleshooting](#troubleshooting)
       * [Password Reset](#password-reset)
@@ -103,11 +105,14 @@ the `-e` parameter in the format `<VARIABLE_NAME>=<VALUE>`.
 |`LANG`| Sets the [locale](https://en.wikipedia.org/wiki/Locale_(computer_software)), defining the application's language, if supported. Format is `language[_territory][.codeset]`, where language is an [ISO 639 language code](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes), territory is an [ISO 3166 country code](https://en.wikipedia.org/wiki/ISO_3166-1#Current_codes), and codeset is a character set, like `UTF-8`. For example, Australian English using UTF-8 is `en_AU.UTF-8`. | `en_US.UTF-8` |
 |`TZ`| [TimeZone](http://en.wikipedia.org/wiki/List_of_tz_database_time_zones) used by the container. The timezone can also be set by mapping `/etc/localtime` between the host and the container. | `Etc/UTC` |
 |`KEEP_APP_RUNNING`| When set to `1`, the application is automatically restarted if it crashes or terminates. | `0` |
-|`APP_NICENESS`| Priority at which the application runs. A niceness value of -20 is the highest, 19 is the lowest and 0 the default. **NOTE**: A negative niceness (priority increase) requires additional permissions. The container must be run with the Docker option `--cap-add=SYS_NICE`. | `0` |
+|`APP_NICENESS`| Priority at which the application runs. A niceness value of `-20` is the highest, `19` is the lowest and `0` the default. **NOTE**: A negative niceness (priority increase) requires additional permissions. The container must be run with the Docker option `--cap-add=SYS_NICE`. | `0` |
 |`INSTALL_PACKAGES`| Space-separated list of packages to install during container startup. List of available packages can be found at https://pkgs.alpinelinux.org. | (no value) |
 |`PACKAGES_MIRROR`| Mirror of the repository to use when installing packages. List of mirrors is available at https://mirrors.alpinelinux.org. | (no value) |
 |`CONTAINER_DEBUG`| When set to `1`, enables debug logging. | `0` |
-|`DISABLE_IPV6`| When set to `1`, IPv6 support is disabled.  This is needed when IPv6 is not enabled/supported on the host. | `0` |
+|`DISABLE_IPV6`| When set to `1`, IPv6 support is disabled. This is needed when IPv6 is not enabled/supported on the host. | `0` |
+|`DISABLE_RESOLVER`| When set to `1`, usage of NGINX resolver is disabled. | `0` |
+|`IP_RANGES_FETCH_ENABLED`| When set to `1`, official Cloudflare and CloudFront IP ranges are periodically fetched to define a trusted list. This ensures the system recognizes these providers as legitimate intermediaries, allowing it use the original client IP from request headers instead of the provider's IP. | `1` |
+|`NPM_ADMIN_PORT`| Port used by the administration web interface. This port is internal to the container and typically does not need to be changed. By default, a container uses the default bridge network, requiring each internal port to be mapped to an external port (using the `-p` or `--publish` argument). If another network type is used, changing this port may prevent conflicts with other services/containers. | `8181` |
 
 #### Deployment Considerations
 
@@ -167,7 +172,7 @@ documentation for details.
 
 | Port | Protocol | Mapping to Host | Description |
 |------|----------|-----------------|-------------|
-| 8181 | TCP | Mandatory | Port used to access the web interface of the application. |
+| 8181 | TCP | Mandatory | Port used to access the administration web interface. For non-default bridge networks, the port can be changed with the `NPM_ADMIN_PORT` environment variable. |
 | 8080 | TCP | Mandatory | Port used to serve HTTP requests. |
 | 4443 | TCP | Mandatory | Port used to serve HTTPs requests. |
 
@@ -205,7 +210,6 @@ Adjust the configuration to suit your needs. Only mandatory settings are
 included in this example.
 
 ```yaml
-version: '3'
 services:
   nginx-proxy-manager:
     image: jlesage/nginx-proxy-manager
@@ -324,15 +328,6 @@ uid=1000(myuser) gid=1000(myuser) groups=1000(myuser),4(adm),24(cdrom),27(sudo),
 
 Use the `uid` (user ID) and `gid` (group ID) values to configure the container.
 
-## Accessing the GUI
-
-Assuming that container's ports are mapped to the same host's ports, the
-interface of the application can be accessed with a web browser at:
-
-```text
-http://<HOST IP ADDR>:8181
-```
-
 ## Shell Access
 
 To access the shell of a running container, execute the following command:
@@ -344,33 +339,34 @@ docker exec -ti CONTAINER sh
 Where `CONTAINER` is the ID or the name of the container used during its
 creation.
 
-## Default Administrator Account
+## Accessing the GUI
 
-After a fresh install, use the following credentials to login:
-  - Email address: `admin@example.com`
-  - Password: `changeme`
+Assuming that container's ports are mapped to the same host's ports, the
+interface of the application can be accessed with a web browser at:
 
-After you login with this default user, you will be asked to modify your details
-and change your password.
+```text
+http://<HOST IP ADDR>:8181
+```
 
 ## Accessibility From The Internet
 
-**NOTE:** This section assumes that the container is using the default `bridge`
-network type.
+> [!NOTE]
+> This section assumes that the container is using the default `bridge` network
+> type.
 
 For this container to be accessible from the Internet, port forwarding must be
-configured on your router.  This allows HTTP (port 80) and HTTPs (port 443)
+configured on your router. This allows HTTP (port 80) and HTTPs (port 443)
 traffic from the Internet to reach this container on your private network.
 
 Configuration of port forwarding differs from one router to another, but in
 general the same information must be configured:
   - **External port**: The Internet-side port to be forwarded.
-  - **Internal port**: The port to forward to.  Also called private port.
+  - **Internal port**: The port to forward to. Also called private port.
   - **Destination IP address**: The IP address of the device on the local
-    network to forward to.  Also called private IP address.
+    network to forward to. Also called private IP address.
 
 The IP address to forward to should be the IP address of the host running the
-container.  The port to forward to should be the port mapped to the container
+container. The port to forward to should be the port mapped to the container
 during its creation (via the `-p` parameter of the `docker run` command).
 
 Since the container needs to handle both HTTP and HTTPs traffic, two ports need
@@ -381,13 +377,14 @@ to be forwarded:
 | HTTP         | 8080           | XXXX                          | 80            | XXXX          | IP address of the host running the container. |
 | HTTPs        | 4443           | YYYY                          | 443           | YYYY          | IP address of the host running the container. |
 
-`XXXX` and `YYYY` are configurable port values.  Unless they conflict with other
+`XXXX` and `YYYY` are configurable port values. Unless they conflict with other
 used ports on the host, they can simply be set to the same value as the
 container port.
 
-**NOTE**: Some routers don't offer the ability to configure the internal port
-to forward to.  This means that internal port is the same as the external one.
-In a such scenario, `XXXX` must be set to `80` and `YYYY` to `443`.
+> [!NOTE]
+> Some routers don't offer the ability to configure the internal port to forward
+> to. This means that internal port is the same as the external one. In a such
+> scenario, `XXXX` must be set to `80` and `YYYY` to `443`.
 
 For more details about port forwarding, see the following links:
   - [How to Port Forward - General Guide to Multiple Router Brands](https://www.noip.com/support/knowledgebase/general-port-forwarding-guide/)
