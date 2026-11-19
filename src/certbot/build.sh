@@ -44,7 +44,40 @@ apk --no-cache add \
 apk --no-cache add \
     build-base \
     python3-dev \
-    go \
+
+# certbot-dns-multi 5.6.0 compiles a Go extension. Its go.mod requires
+# Go >= 1.26.0. Alpine 3.23 ships Go 1.25 and sets GOTOOLCHAIN=local, so
+# that toolchain refuses to download a newer one.
+GO_VERSION=1.27.4
+case "$TARGETPLATFORM" in
+    linux/amd64)
+        GO_ARCH=amd64
+        GO_SHA256=7226736c2339719cda28fbf3a54d71aa63bcefe376e98cef00034268dab24840
+        ;;
+    linux/386)
+        GO_ARCH=386
+        GO_SHA256=6ecb45737d2315acb0dbbc97ea8e13e7c19d4c796abe8d68907c40bce6f50bf7
+        ;;
+    linux/arm64)
+        GO_ARCH=arm64
+        GO_SHA256=3392582988a273a87ab5043ee1b2c9c17a2c3c00580bf9326c47a2e0aaaeac92
+        ;;
+    linux/arm/v6|linux/arm/v7)
+        GO_ARCH=armv6l
+        GO_SHA256=e50964c41c6e187375387939e2f380de7250eba44e2259dfeb75c540d9d585c3
+        ;;
+    *)
+        log "ERROR: Unsupported platform for Go: $TARGETPLATFORM"
+        exit 1
+        ;;
+esac
+log "Installing Go ${GO_VERSION} (${GO_ARCH})..."
+curl -# -L -f "https://go.dev/dl/go${GO_VERSION}.linux-${GO_ARCH}.tar.gz" -o /tmp/go.tgz
+echo "${GO_SHA256}  /tmp/go.tgz" | sha256sum -c -
+tar -C /usr/local -xzf /tmp/go.tgz
+rm -f /tmp/go.tgz
+export PATH="/usr/local/go/bin:${PATH}"
+export GOTOOLCHAIN=local
 
 # Needed to build cffi.
 apk --no-cache add \
@@ -92,6 +125,24 @@ case "$TARGETPLATFORM" in
         ;;
 esac
 
+# lxml publishes no musllinux i686 wheel, so linux/386 builds it from source.
+# STATIC_DEPS makes that build download zlib from https://zlib.net/. The
+# tarball lxml checksums, zlib 1.3.2, is no longer there. Fetch it from
+# /fossils/ and give the build that directory.
+lxml_config=""
+case "$TARGETPLATFORM" in
+    linux/386)
+        log "Downloading zlib 1.3.2 for the lxml build..."
+        mkdir -p /tmp/lxml-deps
+        curl -# -L -f "https://zlib.net/fossils/zlib-1.3.2.tar.gz" \
+            -o /tmp/lxml-deps/zlib-1.3.2.tar.gz
+        # lxml reads --download-dir when setup.py starts. setuptools applies
+        # --build-option only to bdist_wheel, which is too late, so this has
+        # to be a --global-option.
+        lxml_config="--config-settings-package lxml:--global-option=--download-dir=/tmp/lxml-deps"
+        ;;
+esac
+
 mkdir /tmp/certbot-symlinks
 
 log "Installing certbot..."
@@ -122,7 +173,7 @@ for plugin in $(jq -r 'keys[]' "$CERTBOT_PLUGINS"); do
     esac
     uv venv /opt/certbot/$full_plugin_name
     . /opt/certbot/$full_plugin_name/bin/activate
-    uv pip install --find-links /packages/ $deps $pkg_name$pkg_ver
+    uv pip install --find-links /packages/ $lxml_config $deps $pkg_name$pkg_ver
     uv pip uninstall setuptools
     deactivate
     ln -s /opt/certbot/$full_plugin_name/bin/certbot /tmp/certbot-symlinks/certbot-$full_plugin_name
